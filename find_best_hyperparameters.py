@@ -13,7 +13,7 @@ from sklearn.metrics import confusion_matrix
 import subprocess
 import spacy
 
-data_directory = "/nfsvol/crfiler-skr/Zeshan/structure abstract dataset/"
+data_directory = ""
 
 def get_sentence_from_line(line, tok, token_prefix = ''):
     sentence = line.split('|')[7].lower()
@@ -88,11 +88,6 @@ def preprocess_corpora(input_filenames, add_position_information = False, includ
 
         # iterate through lines in input file
         for line in fin:
-
-                # lines starting with ### mark beginning of new abstract ('chunk')
-                # if line.startswith('###'):
-                #     chunk_id = line
-                #     text_chunk_in = ''
                 tokens = line.split('|')
                 if chunk_id == '':
                     chunk_id = tokens[0]
@@ -104,20 +99,17 @@ def preprocess_corpora(input_filenames, add_position_information = False, includ
                     text_chunk_in = ""
                     text_chunk_in += line
 
-                # otherwise, this is a line containing a labelled sentence
-                # else:
-                #         text_chunk_in += line
         write_chunk_output(text_chunk_in, included_context_sentence_offset, add_position_information, omit_labels, fout, tok)
         fin.close()
         fout.close()
 
 def fasttext_train(train_filename, model_filename, params, pretrained_vector_file):
     if pretrained_vector_file:
-        subprocess.call(['/export/home/pengz3/Desktop/text\ embeddings/fastText-0.1.0/fasttext', 'supervised', '-input', train_filename, '-output', \
+        subprocess.call(['./fasttext', 'supervised', '-input', train_filename, '-output', \
             model_filename, '-pretrainedVectors', pretrained_vector_file, '-dim', str(params['dim']), '-wordNgrams', str(params['wordNgrams']), '-epoch', str(params['epoch']), '-verbose', '0'], shell=True)
         # ! fasttext supervised -input $train_filename -output $model_filename -pretrainedVectors $pretrained_vector_file -dim {params['dim']} -wordNgrams {params['wordNgrams']} -epoch {params['epoch']} -verbose 0
     else:
-        subprocess.call(' '.join(['/export/home/pengz3/Desktop/text\ embeddings/fastText-0.1.0/fasttext', 'supervised', '-input', train_filename, '-output', \
+        subprocess.call(' '.join(['./fasttext', 'supervised', '-input', train_filename, '-output', \
             model_filename, '-dim', str(params['dim']), '-wordNgrams', str(params['wordNgrams']), '-epoch', str(params['epoch']), '-verbose', '1']), shell=True)
         # ! fasttext supervised -input $train_filename -output $model_filename -dim {params['dim']} -wordNgrams {params['wordNgrams']} -epoch {params['epoch']} -verbose 0
 
@@ -163,9 +155,9 @@ def fasttext_test(model_filename, test_filename, plot_matrix = False):
             y_true.append(line.split('\t')[0].lower())
 
     # output = ! fasttext predict $model_filename $test_filename
-    process = subprocess.Popen(['/export/home/pengz3/Desktop/text embeddings/fastText-0.1.0/fasttext', 'predict', model_filename, test_filename], stdout=subprocess.PIPE)
+    process = subprocess.Popen(['./fasttext', 'predict', model_filename, test_filename], stdout=subprocess.PIPE)
     output, err = process.communicate()
-    #output = subprocess.check_output(' '.join(['/export/home/pengz3/Desktop/text\ embeddings/fastText-0.1.0/fasttext', 'predict', model_filename, test_filename]), shell=True)
+    #output = subprocess.check_output(' '.join(['./fasttext', 'predict', model_filename, test_filename]), shell=True)
     y_pred = []
     output = output.split(' ')
     output = output[0].split('\n')
@@ -217,22 +209,22 @@ def train_and_test(train_filename, model_filename, test_filename, params, pretra
     return dict(results, **params)
 
 #single file
-input_filenames = [sys.argv[1]]
-preprocess_corpora(input_filenames, add_position_information = True, included_context_sentence_offset = [-2, -1, +1, +2])
+#input_filenames = [sys.argv[1]]
+#preprocess_corpora(input_filenames, add_position_information = True, included_context_sentence_offset = [-2, -1, +1, +2])
 
 #all train, validation and test files
-# input_filenames = [data_directory + 'train.txt',
-#                    data_directory + 'valid.txt',
-#                    data_directory + 'test.txt']
-# preprocess_corpora(input_filenames, add_position_information = True, included_context_sentence_offset = [-2, -1, +1, +2])
+input_filenames = [data_directory + 'train.txt',
+                   data_directory + 'valid.txt',
+                   data_directory + 'test.txt']
+preprocess_corpora(input_filenames, add_position_information = True, included_context_sentence_offset = [-2, -1, +1, +2])
 
-# param_grid = {'dim': [10,20,50,100,200], 'wordNgrams': [1,2,3,4], 'epoch': [1,2,3,4,5]}
-# test_results_df = pd.DataFrame(columns = ['precision', 'recall', 'training_time'] + (list(param_grid.keys())))
-#
-# for params in ParameterGrid(param_grid):
-#     test_results_df = test_results_df.append(train_and_test(data_directory + "all_clean/200kTrain_clean.txt.preprocessed",\
-#                                 "fasttext-model", \
-#                                 data_directory + "all_clean/25kValidation_clean.txt.preprocessed", params), ignore_index=True)
-#
-#
-# display(test_results_df.sort_values(['f1', 'training_time'], ascending=[False, True]))
+param_grid = {'dim': [10,20,50,100,200], 'wordNgrams': [1,2,3,4], 'epoch': [1,2,3,4,5]}
+test_results_df = pd.DataFrame(columns = ['precision', 'recall', 'training_time'] + (list(param_grid.keys())))
+
+for params in ParameterGrid(param_grid):
+    test_results_df = test_results_df.append(train_and_test(data_directory + "train.txt.preprocessed",\
+                                "fasttext-model", \
+                                data_directory + "valid.txt.preprocessed", params), ignore_index=True)
+
+
+display(test_results_df.sort_values(['f1', 'training_time'], ascending=[False, True]))
