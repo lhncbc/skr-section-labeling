@@ -76,6 +76,6 @@ def preprocess_corpora(input_filenames, output_file_postfix = '.preprocessed.con
         fin.close()
         fout.close()
 
-data_directory = "200k/all_clean/"
-input_filenames = [data_directory + '200kTrain_clean.txt', data_directory + '25kValidation_clean.txt', data_directory + '25kTest_clean.txt']
+data_directory = ""
+input_filenames = [data_directory + 'train.txt', data_directory + 'valid.txt', data_directory + 'test.txt']
 preprocess_corpora(input_filenames)
